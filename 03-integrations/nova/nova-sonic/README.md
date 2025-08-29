@@ -21,7 +21,7 @@ The conversation flow begins with a greeting and collecting the user’s name, a
 ## Integration Architecture
 Amazon Nova Sonic relies on ToolUse to integrate with agentic workflows. During Nova Sonic's event lifecycle, you can provide ToolUse configurations through the [PromptStart](https://docs.aws.amazon.com/nova/latest/userguide/input-events.html) event, which is designed to trigger when Sonic receives specific types of input.
 
-For example, in this AgentCore sample, we configured ToolUse to trigger events when the Sonic built-in reasoning model determines (similar to intent classification) that the user should be routed to the Banking or Mortgage sub-agents.
+For example, in this AgentCore sample, we configured ToolUse to trigger events when the Sonic built-in reasoning model determines (similar to intent classification) that the inquiry should be routed to the Banking or Mortgage sub-agents.
 
 ```
 [
