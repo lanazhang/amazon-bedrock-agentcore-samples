@@ -23,7 +23,7 @@ Amazon Nova Sonic relies on ToolUse to integrate with agentic workflows. During 
 
 For example, in this AgentCore sample, we configured ToolUse to trigger events when the Sonic built-in reasoning model determines (similar to intent classification) that the user should be routed to the Banking or Mortgage sub-agents.
 
-```JSON
+```
 [
     {
         "toolSpec": {
