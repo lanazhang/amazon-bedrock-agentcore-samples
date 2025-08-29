@@ -85,3 +85,23 @@ The application listening to Nova Sonic events will invoke the AgentCore instanc
 
 ## Deploy the Sample Code
 For sample code and full deployment instructions, please refer to the [amazon-nova-sample](https://github.com/aws-samples/amazon-nova-samples/tree/main/speech-to-speech/workshops/agent-core) repository.
+
+## Nova Sonic Multi-Agent Best Practices
+Multi-agent architecture provides flexibility and a modular design, allowing builders to structure voice assistants efficiently and potentially reuse existing specialized agent workflows. However, there are some best practices specific to voice chat that are important to consider.
+
+Best Practices:
+
+- Balance flexibility and latency: Invoking sub-agents via Nova Sonic ToolUse events can add latency to voice responses.
+
+- Use smaller LLMs for sub-agents: Starting with models like [Nova Lite](https://docs.aws.amazon.com/ai/responsible-ai/nova-micro-lite-pro/overview.html) can help reduce latency.
+
+- Optimize response length: Voice assistants benefit from shorter responses with follow-ups, improving both latency and user experience.
+
+- Stateless vs. statefull sub-agent design: 
+    - Stateless sub-agent: Handle each request independently, without memory of previous interactions. Which is simple, easy to scale, but cannot provide context-aware responses.
+    - Stateful sub-agent: Maintain memory across interactions, enabling context-aware responses. Supports personalized experiences but is more complex and resource-intensive.
+
+    So: 
+    
+    - Use stateless sub-agents for simple tasks and stateful ones for multi-turn or context-dependent workflows.
+    - Let Nova Sonic orchestrator manage session-level state while delegating specialized tasks.
