@@ -590,7 +590,7 @@ async def forward_responses(websocket: WebSocket, stream_manager):
 
                     if len(events_to_send) > 1:
                         logger.info(
-                            f"Forwarded {event_type} chunk {idx+1}/{len(events_to_send)} to client (size: {chunk_size} bytes)"
+                            f"Forwarded {event_type} chunk {idx + 1}/{len(events_to_send)} to client (size: {chunk_size} bytes)"
                         )
                     else:
                         logger.info(
