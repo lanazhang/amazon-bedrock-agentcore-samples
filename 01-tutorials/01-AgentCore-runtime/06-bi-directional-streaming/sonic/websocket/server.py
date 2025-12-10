@@ -43,7 +43,7 @@ def get_imdsv2_token():
 
 def get_credentials_from_imds():
     """
-    Manually retrieve IAM role credentials from EC2 Instance Metadata Service.
+    Manually retrieve IAM role credentials from envrionment Metadata Service.
 
     This utility method fetches credentials directly from IMDS without using boto3.
     It tries both IMDSv1 and IMDSv2 methods.
@@ -205,7 +205,7 @@ async def startup_event():
         logger.info("   Credential refresh task will not be started")
     else:
         # Try to fetch credentials from IMDS and start refresh task
-        logger.info("🔄 Attempting to fetch credentials from EC2 IMDS...")
+        logger.info("🔄 Attempting to fetch credentials from ENV IMDS...")
 
         imds_result = get_credentials_from_imds()
 
@@ -272,7 +272,7 @@ async def credential_info():
         mode = "local"
         note = "Using static credentials from environment variables"
     else:
-        credential_source = "EC2 IMDS (IMDSv2 preferred, falls back to IMDSv1)"
+        credential_source = "ENV IMDS (IMDSv2 preferred, falls back to IMDSv1)"
         mode = "ec2"
         note = "Credentials are automatically refreshed from IMDS by background task"
 
