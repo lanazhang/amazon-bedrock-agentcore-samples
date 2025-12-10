@@ -313,7 +313,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                         # Create a new stream manager for this connection
                         stream_manager = S2sSessionManager(
-                            model_id='amazon.nova-sonic-v1:0', 
+                            model_id='amazon.nova-2-sonic-v1:0', 
                             region=aws_region
                         )
                         
