@@ -228,7 +228,7 @@ async def websocket_endpoint(websocket: WebSocket):
             """Handle incoming messages from the client, filtering text vs audio."""
             while True:
                 message = await websocket.receive_json()
-                
+
                 # Check if it's a text message from the client
                 if message.get("type") == "text_input":
                     text = message.get("text", "")

@@ -159,7 +159,7 @@ class S2sSessionManager:
             # Close session
             if "sessionEnd" in event_data["event"]:
                 await self.close()
-            
+
         except Exception:
             logger.error("Error sending event to Bedrock")
             # Don't close the stream on send errors, let Bedrock handle it
@@ -199,7 +199,7 @@ class S2sSessionManager:
                 break
             except Exception:
                 logger.error("Error processing audio.")
-    
+
     def add_audio_chunk(self, prompt_name, content_name, audio_data):
         """Add an audio chunk to the queue."""
         # The audio_data is already a base64 string from the frontend
@@ -383,7 +383,9 @@ class S2sSessionManager:
         try:
             if toolUseContent.get("content"):
                 # Parse the JSON string in the content field
-                content = toolUseContent.get("content")  # Pass the JSON string directly to the agent
+                content = toolUseContent.get(
+                    "content"
+                )  # Pass the JSON string directly to the agent
                 logger.debug(f"Extracted query: {content}")
 
             # Simple toolUse to get system time in UTC
