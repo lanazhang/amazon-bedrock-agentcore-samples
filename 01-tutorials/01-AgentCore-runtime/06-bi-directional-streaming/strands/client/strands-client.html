@@ -93,6 +93,38 @@
             max-width: 300px;
         }
         
+        #textInputSection {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        
+        #textInput {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        #textInput:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        #sendTextBtn {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            white-space: nowrap;
+            flex: 0 0 auto;
+            min-width: 100px;
+        }
+        
         button { 
             flex: 1;
             padding: 10px 20px;
@@ -357,7 +389,7 @@
     <div class="container">
         <div class="header">
             <div class="header-text">
-                <h1>🎙️ Strands BidiAgent WebSocket Client - with Bedrock AgentCore</h1>
+                <h1>🎙️ Strands BidiAgent for Amazon Nova 2 Sonic - with Bedrock AgentCore</h1>
             </div>
             <div id="status" class="disconnected">Disconnected</div>
         </div>
@@ -375,6 +407,11 @@
             
             <div id="controls">
                 <button id="toggleBtn" onclick="toggleConnection()">🚀 Start Conversation</button>
+            </div>
+            
+            <div id="textInputSection">
+                <input type="text" id="textInput" placeholder="Type a message and press Enter or click Send..." disabled>
+                <button id="sendTextBtn" onclick="sendTextMessage()" disabled>📤 Send</button>
             </div>
             
             <div class="panels-container">
@@ -456,17 +493,23 @@
         function updateStatus(connected, recording = false) {
             const status = document.getElementById('status');
             const toggleBtn = document.getElementById('toggleBtn');
+            const textInput = document.getElementById('textInput');
+            const sendTextBtn = document.getElementById('sendTextBtn');
             
             if (connected) {
                 status.textContent = recording ? '🔴 Recording' : '🟢 Connected';
                 status.className = 'connected';
                 toggleBtn.textContent = '🛑 End Conversation';
                 toggleBtn.className = 'connected';
+                textInput.disabled = false;
+                sendTextBtn.disabled = false;
             } else {
                 status.textContent = '⚫ Disconnected';
                 status.className = 'disconnected';
                 toggleBtn.textContent = '🚀 Start Conversation';
                 toggleBtn.className = '';
+                textInput.disabled = true;
+                sendTextBtn.disabled = true;
             }
         }
         
@@ -686,6 +729,41 @@
             isRecording = false;
             addMessage('Recording stopped', 'system');
         }
+        
+        function sendTextMessage() {
+            const textInput = document.getElementById('textInput');
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                return;
+            }
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('❌ Not connected', 'system');
+                return;
+            }
+            
+            const payload = {
+                type: "text_input",
+                text: text
+            };
+            
+            ws.send(JSON.stringify(payload));
+            addEvent('sent', 'text_input', payload);
+            addMessage(text, 'user');
+            
+            textInput.value = '';
+        }
+        
+        // Add Enter key support for text input
+        document.addEventListener('DOMContentLoaded', () => {
+            const textInput = document.getElementById('textInput');
+            textInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendTextMessage();
+                }
+            });
+        });
     </script>
 </body>
 </html>

@@ -448,10 +448,10 @@
             <div class="config-section">
                 <div class="form-group">
                     <label for="websocketUrl">🔗 WebSocket URL</label>
-                    <input type="text" id="websocketUrl" placeholder="ws://localhost:8081/ws" value="ws://localhost:8081/ws">
-                    <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
+                    <input style="display:none" type="text" id="websocketUrl" placeholder="ws://localhost:8081/ws" value="ws://localhost:8081/ws">
+                    <!-- <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
                         Enter the WebSocket server URL (default: ws://localhost:8081/ws)
-                    </small>
+                    </small> -->
                 </div>
                 <div class="form-group">
                     <label for="voiceSelect">🎤 Voice</label>
@@ -497,7 +497,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="panel">
+                <div class="panel" style="display:none">
                     <div class="panel-header">
                         <h2>📡 Events</h2>
                         <div class="event-filter">

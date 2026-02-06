@@ -23,6 +23,8 @@ All samples use a unified setup and cleanup process through the root `setup.sh` 
 
 This sample deploys a **native Amazon Nova Sonic 2 Python WebSocket server** directly to AgentCore. It provides full control over the Nova Sonic protocol with direct event handling, giving you complete visibility into session management, audio streaming, and response generation.
 
+**Model:** Uses `amazon.nova-2-sonic-v1:0` for real-time speech-to-speech conversations.
+
 **Architecture:** 
 
 ![AgentCore Sonic Architecture](./images/agentcore-sonic-architecture.png)
@@ -88,6 +90,7 @@ The web client will:
 ### Features
 
 - **Real-time audio streaming** - Speak naturally and get immediate responses
+- **Text input** - Type messages in addition to voice input
 - **Voice selection** - Choose from multiple voices across different languages (English, French, Italian, German, Spanish)
 - **Dynamic voice switching** - Change voices during an active conversation
 - **Interruption support** - Barge-in capability to interrupt the assistant mid-response
@@ -116,6 +119,8 @@ The Sonic implementation includes a working example of tool integration. The `ge
 ## Strands Sample - Framework-Based Implementation
 
 This sample demonstrates using the **Strands BidiAgent framework** for real-time audio conversations with Amazon Nova Sonic. Strands provides a high-level abstraction that simplifies bidirectional streaming, automatic session management, and tool integration.
+
+**Model:** Uses `amazon.nova-2-sonic-v1:0` through the Strands BidiAgent framework.
 
 **Architecture:**
 
@@ -184,6 +189,14 @@ The web client will:
 The Strands implementation includes a calculator tool that demonstrates framework-based tool integration. The tool can perform basic arithmetic operations.
 
 **Try it:** Ask questions like "What is 25 times 4?" or "Calculate 100 divided by 5" and the assistant will use the calculator tool.
+
+### Text Input Support
+
+Both Sonic and Strands samples support text input in addition to voice:
+- **Sonic:** Uses Nova Sonic's native text content events (`contentStart`, `textInput`, `contentEnd`)
+- **Strands:** Uses `agent.send()` method to send text messages directly to the agent
+
+Type your message in the text input field and press Enter or click Send.
 
 ### Key Differences from Sonic Sample
 
