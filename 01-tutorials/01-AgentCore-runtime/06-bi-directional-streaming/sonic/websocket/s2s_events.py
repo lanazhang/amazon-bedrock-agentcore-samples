@@ -1,6 +1,3 @@
-import json
-
-
 class S2sEvent:
     # Default configuration values
     DEFAULT_INFER_CONFIG = {"maxTokens": 1024, "topP": 0.95, "temperature": 0.7}
