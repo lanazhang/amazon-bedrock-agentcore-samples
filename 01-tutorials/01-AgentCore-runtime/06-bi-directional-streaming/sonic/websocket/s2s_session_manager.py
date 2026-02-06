@@ -1,9 +1,7 @@
 import asyncio
 import json
-import base64
 import warnings
 import uuid
-import os
 import logging
 from s2s_events import S2sEvent
 import time
@@ -17,7 +15,6 @@ from aws_sdk_bedrock_runtime.models import (
 )
 from aws_sdk_bedrock_runtime.config import Config
 from smithy_aws_core.identity.environment import EnvironmentCredentialsResolver
-from smithy_http.aio.aiohttp import AIOHTTPClient, AIOHTTPClientConfig
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -112,10 +109,9 @@ class S2sSessionManager:
         try:
             if not self.bedrock_client:
                 self._initialize_client()
-        except Exception as ex:
+        except Exception:
             self.is_active = False
-            print(f"Failed to initialize Bedrock client: {str(ex)}")
-            logger.error(f"Failed to initialize Bedrock client: {str(ex)}")
+            logger.error("Failed to initialize Bedrock client")
             raise
 
         try:
@@ -140,10 +136,9 @@ class S2sSessionManager:
 
             logger.info("Stream initialized successfully")
             return self
-        except Exception as e:
+        except Exception:
             self.is_active = False
-            print(f"Failed to initialize stream: {str(e)}")
-            logger.error(f"Failed to initialize stream: {e}")
+            logger.error("Failed to initialize stream.")
             raise
 
     async def send_raw_event(self, event_data):
@@ -164,9 +159,9 @@ class S2sSessionManager:
             # Close session
             if "sessionEnd" in event_data["event"]:
                 await self.close()
-
-        except Exception as e:
-            logger.error(f"Error sending event to Bedrock: {e}", exc_info=True)
+            
+        except Exception:
+            logger.error("Error sending event to Bedrock")
             # Don't close the stream on send errors, let Bedrock handle it
             # The response processing loop will detect if the stream is broken
 
@@ -202,9 +197,9 @@ class S2sSessionManager:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                logger.error(f"Error processing audio: {e}", exc_info=True)
-
+            except Exception:
+                logger.error("Error processing audio.")
+    
     def add_audio_chunk(self, prompt_name, content_name, audio_data):
         """Add an audio chunk to the queue."""
         # The audio_data is already a base64 string from the frontend
@@ -298,9 +293,9 @@ class S2sSessionManager:
                 await self.output_queue.put({"raw_data": response_data})
                 # Don't break on JSON errors, continue processing
                 continue
-            except StopAsyncIteration as ex:
+            except StopAsyncIteration:
                 # Stream has ended normally
-                logger.info(f"Bedrock stream has ended (StopAsyncIteration)")
+                logger.info("Bedrock stream has ended (StopAsyncIteration)")
                 break
             except Exception as e:
                 # Handle ValidationException and other errors
@@ -388,10 +383,7 @@ class S2sSessionManager:
         try:
             if toolUseContent.get("content"):
                 # Parse the JSON string in the content field
-                query_json = json.loads(toolUseContent.get("content"))
-                content = toolUseContent.get(
-                    "content"
-                )  # Pass the JSON string directly to the agent
+                content = toolUseContent.get("content")  # Pass the JSON string directly to the agent
                 logger.debug(f"Extracted query: {content}")
 
             # Simple toolUse to get system time in UTC

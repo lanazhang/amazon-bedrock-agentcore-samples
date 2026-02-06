@@ -23,8 +23,6 @@ All samples use a unified setup and cleanup process through the root `setup.sh` 
 
 This sample deploys a **native Amazon Nova Sonic 2 Python WebSocket server** directly to AgentCore. It provides full control over the Nova Sonic protocol with direct event handling, giving you complete visibility into session management, audio streaming, and response generation.
 
-**Model:** Uses `amazon.nova-2-sonic-v1:0` for real-time speech-to-speech conversations.
-
 **Architecture:** 
 
 ![AgentCore Sonic Architecture](./images/agentcore-sonic-architecture.png)
