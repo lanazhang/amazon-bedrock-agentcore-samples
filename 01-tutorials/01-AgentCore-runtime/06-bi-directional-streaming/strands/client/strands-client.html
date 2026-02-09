@@ -229,6 +229,41 @@
             flex-shrink: 0;
         }
         
+        .panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex-shrink: 0;
+        }
+        
+        .event-filter {
+            padding: 6px 15px 10px 15px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .event-filter input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 12px;
+            font-family: inherit;
+        }
+        
+        .event-filter input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .event-filter input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .event.hidden {
+            display: none;
+        }
+        
         #messages { 
             height: 0;
             flex: 1;
@@ -416,9 +451,16 @@
             
             <div class="panels-container">
                 <div class="panel">
+                    <h2>💬 Conversation</h2>
                     <div id="messages"></div>
                 </div>
                 <div class="panel">
+                    <div class="panel-header">
+                        <h2>📡 Raw Events</h2>
+                        <div class="event-filter">
+                            <input type="text" id="eventFilter" placeholder="🔍 Filter events by keyword..." oninput="filterEvents()" />
+                        </div>
+                    </div>
                     <div id="events"></div>
                 </div>
             </div>
@@ -430,6 +472,13 @@
         let isRecording = false;
         let audioPlaybackContext = null;
         let nextPlayTime = 0;
+        
+        // Transcript buffering for better display
+        let transcriptBuffer = {
+            user: { text: '', timer: null, element: null },
+            assistant: { text: '', timer: null, element: null }
+        };
+        const TRANSCRIPT_BUFFER_DELAY = 1000; // 1 second delay before finalizing
     
         function addMessage(content, type) {
             const messages = document.getElementById('messages');
@@ -438,6 +487,69 @@
             message.textContent = content;
             messages.appendChild(message);
             messages.scrollTop = messages.scrollHeight;
+            return message;
+        }
+        
+        function handleBufferedTranscript(role, text) {
+            // Validate role to prevent issues
+            const allowedRoles = ['user', 'assistant'];
+            if (!allowedRoles.includes(role)) {
+                console.warn(`Invalid role: ${role}`);
+                return;
+            }
+            
+            const buffer = transcriptBuffer[role];
+            
+            // Clear existing timer
+            if (buffer.timer) {
+                clearTimeout(buffer.timer);
+            }
+            
+            // Append new text
+            buffer.text += (buffer.text ? ' ' : '') + text;
+            
+            // Update or create message element
+            if (buffer.element && buffer.element.parentNode) {
+                // Update existing message
+                const prefix = role === 'user' ? '🎤 User' : '🔊 Assistant';
+                buffer.element.textContent = `${prefix}: ${buffer.text}`;
+            } else {
+                // Create new message
+                const prefix = role === 'user' ? '🎤 User' : '🔊 Assistant';
+                buffer.element = addMessage(`${prefix}: ${buffer.text}`, role);
+            }
+            
+            // Set timer to finalize the message
+            buffer.timer = setTimeout(() => {
+                buffer.text = '';
+                buffer.element = null;
+                buffer.timer = null;
+            }, TRANSCRIPT_BUFFER_DELAY);
+        }
+        
+        function clearTranscriptBuffers() {
+            // Clear all buffers and timers
+            for (let role in transcriptBuffer) {
+                if (transcriptBuffer[role].timer) {
+                    clearTimeout(transcriptBuffer[role].timer);
+                }
+                transcriptBuffer[role] = { text: '', timer: null, element: null };
+            }
+        }
+        
+        function filterEvents() {
+            const filterInput = document.getElementById('eventFilter');
+            const filterText = filterInput.value.toLowerCase();
+            const events = document.querySelectorAll('#events .event');
+            
+            events.forEach(event => {
+                const eventText = event.textContent.toLowerCase();
+                if (eventText.includes(filterText)) {
+                    event.classList.remove('hidden');
+                } else {
+                    event.classList.add('hidden');
+                }
+            });
         }
         
         function addEvent(direction, type, data) {
@@ -572,6 +684,7 @@
             // Clear previous messages and events
             document.getElementById('messages').textContent = '';
             document.getElementById('events').textContent = '';
+            clearTranscriptBuffers();
             
             // Get pre-signed URL
             const presignedUrl = document.getElementById('presignedUrl').value.trim();
@@ -621,15 +734,25 @@
                         await playAudioOutput(data.audio, 16000);
                         break;
                     case 'bidi_transcript_stream':
-                        const prefix = data.role === 'user' ? '🎤 User' : '🔊 Assistant';
-                        addMessage(`${prefix}: ${data.text}`, data.role);
+                        // Use buffered transcript handling for smoother display
+                        handleBufferedTranscript(data.role, data.text);
                         break;
                     case 'bidi_interruption':
-                        addMessage('[Interrupted]', 'system');
+                        // User interrupted the agent - stop audio playback and clear buffers
+                        addMessage('🚫 [Interrupted - Barge-in detected]', 'system');
+                        clearTranscriptBuffers();
                         if (audioPlaybackContext) {
                             audioPlaybackContext.close();
                             audioPlaybackContext = null;
+                            nextPlayTime = 0;
                         }
+                        break;
+                    case 'bidi_response_complete':
+                        // Response complete event - silently logged in raw events panel
+                        break;
+                    case 'bidi_usage':
+                        // Token usage: silently logged in raw events panel
+                        // {"type": "bidi_usage", "inputTokens": 22, "outputTokens": 0, "totalTokens": 22}
                         break;
                     case 'tool_use_stream':
                         addMessage(`🔧 Tool: ${data.current_tool_use.name}`, 'tool');
@@ -644,6 +767,7 @@
                 ws.onclose = () => {
                     addMessage('Disconnected', 'system');
                     updateStatus(false);
+                    clearTranscriptBuffers();
                     if (isRecording) stopRecording();
                     if (audioPlaybackContext) {
                         audioPlaybackContext.close();
