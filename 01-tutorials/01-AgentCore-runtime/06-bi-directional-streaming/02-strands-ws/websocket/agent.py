@@ -53,10 +53,10 @@ def _load_conversation_history(session_id: str, actor_id: str, k: int = 5) -> st
                     lines.append(f"{role}: {text}")
         if lines:
             context = "\n".join(lines)
-            logger.info(f"📚 Loaded {len(lines)} messages from memory for session={session_id}")
+            logger.info("📚 Loaded %d messages from memory", len(lines))
             return context
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to load conversation history: {e}")
+    except Exception:
+        logger.warning("⚠️ Failed to load conversation history", exc_info=True)
     return None
 
 
@@ -112,10 +112,14 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
 
         # Initialize agent from config (with optional conversation history)
         agent = _create_agent(config, default_gateway_arns, session_id, actor_id)
-        logger.info(f"✅ Agent initialized successfully")
-        logger.info(f"   Config: model={config['model_id']}, region={config['region']}, voice={config['voice']}, audio={config['input_sample_rate']}Hz/{config['output_sample_rate']}Hz")
+        logger.info("✅ Agent initialized successfully")
+        logger.info(
+            "   Config: model=%s, region=%s, voice=%s, audio=%dHz/%dHz",
+            config['model_id'], config['region'], config['voice'],
+            config['input_sample_rate'], config['output_sample_rate'],
+        )
         if MEMORY_ID:
-            logger.info(f"   Memory: id={MEMORY_ID}, session={session_id}, actor={actor_id}")
+            logger.info("   Memory: id=%s, session=%s, actor=%s", MEMORY_ID, session_id, actor_id)
 
         # Send acknowledgment back to client
         await websocket.send_json({
@@ -234,13 +238,15 @@ def _create_agent(config: dict, default_gateway_arns: list, session_id: str = "d
             effective_system_prompt += f"\n\nPrevious conversation history:\n{history}"
 
     if config["gateway_arns"]:
-        logger.info(f"   Gateways: {len(config['gateway_arns'])} from config event")
+        logger.info("   Gateways: %d from config event", len(config['gateway_arns']))
     else:
-        logger.info(f"   Gateways: {len(default_gateway_arns)} from environment")
+        logger.info("   Gateways: %d from environment", len(default_gateway_arns))
 
     model_id = config["model_id"]
-    logger.info(f"🎤 Initializing agent with model: {model_id}, voice: {config['voice']}, region: {config['region']}")
-    logger.info(f"📝 System prompt: {effective_system_prompt[:100]}...")
+    voice = config["voice"]
+    region = config["region"]
+    logger.info("🎤 Initializing agent with model: %s, voice: %s, region: %s", model_id, voice, region)
+    logger.info("📝 System prompt: %s...", effective_system_prompt[:100])
 
     model = _create_model(config, effective_gateway_arns)
 

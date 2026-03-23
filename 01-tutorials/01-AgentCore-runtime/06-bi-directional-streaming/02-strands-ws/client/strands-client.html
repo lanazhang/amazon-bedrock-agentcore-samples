@@ -762,10 +762,15 @@
             document.getElementById('modalApiKey').value = '';
             document.getElementById('modalSystemPrompt').value = agentConfig.systemPrompt;
             
-            localStorage.setItem('agentConfig', JSON.stringify(agentConfig));
+            localStorage.setItem('agentConfig', JSON.stringify({
+                voice: agentConfig.voice,
+                modelId: agentConfig.modelId,
+                region: agentConfig.region,
+                systemPrompt: agentConfig.systemPrompt,
+                inputSampleRate: agentConfig.inputSampleRate,
+                outputSampleRate: agentConfig.outputSampleRate
+            }));
         }
-        
-        // Update model configuration when model changes
         function updateModelConfig() {
             const modelId = document.getElementById('modalModelId').value;
             const config = MODEL_CONFIGS[modelId];
@@ -861,8 +866,16 @@
                     apiKey: apiKey
                 };
                 
-                // Store in localStorage for persistence
-                localStorage.setItem('agentConfig', JSON.stringify(agentConfig));
+                // Store in localStorage for persistence (exclude apiKey — never persist secrets)
+                const configForStorage = {
+                    voice: voice,
+                    modelId: modelId,
+                    region: region,
+                    systemPrompt: systemPrompt,
+                    inputSampleRate: modelConfig.inputSampleRate,
+                    outputSampleRate: modelConfig.outputSampleRate
+                };
+                localStorage.setItem('agentConfig', JSON.stringify(configForStorage));
                 
                 closeConfigModal();
                 

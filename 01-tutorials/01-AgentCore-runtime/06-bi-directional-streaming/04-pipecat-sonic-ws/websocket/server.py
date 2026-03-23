@@ -131,7 +131,9 @@ async def refresh_credentials_periodically():
                 os.environ["AWS_ACCESS_KEY_ID"] = creds["access_key"]
                 os.environ["AWS_SECRET_ACCESS_KEY"] = creds["secret_key"]
                 os.environ["AWS_SESSION_TOKEN"] = creds["token"]
-                logger.info(f"Credentials refreshed via {result['method_used']}, expires: {creds['expiration']}")
+                expiration = creds["expiration"]
+                method_used = result["method_used"]
+                logger.info("Credentials refreshed via %s, expires: %s", method_used, expiration)
             else:
                 logger.warning(f"Credential refresh failed: {result['error']}")
         except Exception as e:
