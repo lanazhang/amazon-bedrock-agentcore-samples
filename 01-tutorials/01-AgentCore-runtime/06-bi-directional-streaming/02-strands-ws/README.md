@@ -79,14 +79,11 @@ export AWS_REGION=us-east-1
 export MCP_GATEWAY_ARNS='["arn:aws:bedrock-agentcore:us-east-1:123456789012:gateway/gw-1", ...]'
 export MCP_GATEWAY_URLS='["https://gateway-1.endpoint.example.com", ...]'
 
-# 4. (Optional) Enable AgentCore Memory
-export MEMORY_ID=your-memory-id
-
-# 5. Start the server (port 8080)
+# 4. Start the server (port 8080)
 cd 02-strands-ws/websocket
 python server.py
 
-# 6. In another terminal, start the client (port 8000, opens browser)
+# 5. In another terminal, start the client (port 8000, opens browser)
 cd 02-strands-ws/client
 pip install -r requirements.txt
 python client.py --ws-url ws://localhost:8080/ws
@@ -107,62 +104,6 @@ export OPENAI_API_KEY=your-openai-api-key    # For OpenAI
 - "What's my account balance?" / "Show me my recent transactions"
 - "What are the current mortgage rates?"
 - "How can I avoid monthly fees on my checking account?" (requires Knowledge Base)
-
-## AgentCore Memory Integration
-
-The agent supports [Amazon Bedrock AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/strands-sdk-memory.html) for persisting chat history across sessions. When enabled, conversation turns are saved and restored automatically.
-
-### Setup
-
-1. Create a memory resource (one-time):
-
-```python
-from bedrock_agentcore.memory import MemoryClient
-
-client = MemoryClient(region_name="us-east-1")
-memory = client.create_memory(
-    name="StrandsBidiAgentMemory",
-    description="Chat history for the Strands BidiAgent"
-)
-print(f"MEMORY_ID={memory['id']}")
-```
-
-2. Set the environment variable on the server:
-
-```bash
-export MEMORY_ID=<your-memory-id>
-# Optional: override region (defaults to AWS_DEFAULT_REGION or us-east-1)
-export MEMORY_REGION=us-east-1
-```
-
-For AgentCore Runtime deployments, add it to the runtime environment:
-
-```bash
-aws bedrock-agentcore-control update-agent-runtime \
-  --agent-runtime-id $AGENT_RUNTIME_ID \
-  --environment-variables MEMORY_ID=<your-memory-id> \
-  --region us-east-1
-```
-
-### How It Works
-
-- On session start, the last 5 conversation turns are loaded from memory and appended to the system prompt as context.
-- During the session, user text inputs and assistant text responses are saved to memory via `MemoryClient.create_event()`.
-- The client can send `session_id` and `actor_id` in the config event for per-user/per-session isolation. If omitted, defaults are generated automatically.
-
-### Client Config Event (with memory fields)
-
-```json
-{
-  "type": "config",
-  "voice": "tiffany",
-  "model_id": "amazon.nova-2-sonic-v1:0",
-  "session_id": "user-123-session-abc",
-  "actor_id": "user-123"
-}
-```
-
-When `MEMORY_ID` is not set, the agent behaves exactly as before — no memory overhead.
 
 ## Architecture
 
@@ -185,7 +126,7 @@ The model is selected per session via the client's config modal. Sample rates ar
 | File | Purpose |
 |------|---------|
 | `websocket/server.py` | FastAPI server, IMDS credentials, WebSocket endpoint, large event splitting |
-| `websocket/agent.py` | Session handler, multi-model BidiAgent setup (Nova Sonic / Gemini / OpenAI), AgentCore Memory integration |
+| `websocket/agent.py` | Session handler, multi-model BidiAgent setup (Nova Sonic / Gemini / OpenAI) |
 | `client/client.py` | HTTP server that serves the HTML client |
 | `client/strands-client.html` | Browser-based voice/text client with model selector and config modal |
 | `client/profiles.json` | Pre-configured agent profiles (Finance, General, Tech Support) |
@@ -276,7 +217,7 @@ Gateway ARNs are passed to the model via the `mcp_gateway_arn` parameter and are
 
 | Type | Fields | Description |
 |------|--------|-------------|
-| `config` | `voice`, `model_id`, `region`, `input_sample_rate`, `output_sample_rate`, `system_prompt`, `api_key`, `session_id`, `actor_id` | Initial session configuration (must be first message). `session_id`/`actor_id` are optional, used for memory isolation. |
+| `config` | `voice`, `model_id`, `region`, `input_sample_rate`, `output_sample_rate`, `system_prompt`, `api_key` | Initial session configuration (must be first message). |
 | `text_input` | `text` | Text message to send to the agent |
 | `bidi_audio_input` | `audio` (base64), `format`, `sample_rate`, `channels` | PCM audio chunk from the microphone |
 

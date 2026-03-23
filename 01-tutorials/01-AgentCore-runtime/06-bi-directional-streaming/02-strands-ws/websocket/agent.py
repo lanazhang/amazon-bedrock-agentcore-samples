@@ -1,7 +1,6 @@
 import logging
 import os
 import traceback
-from datetime import datetime
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -9,72 +8,6 @@ from strands.experimental.bidi.agent import BidiAgent
 from strands.experimental.bidi.models.nova_sonic import BidiNovaSonicModel
 
 logger = logging.getLogger(__name__)
-
-# --- AgentCore Memory ---
-MEMORY_ID = os.getenv("MEMORY_ID")
-MEMORY_REGION = os.getenv("MEMORY_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
-
-_memory_client = None
-
-
-def _get_memory_client():
-    """Lazily initialise and return the AgentCore MemoryClient."""
-    global _memory_client
-    if _memory_client is None and MEMORY_ID:
-        try:
-            from bedrock_agentcore.memory import MemoryClient
-            _memory_client = MemoryClient(region_name=MEMORY_REGION)
-            logger.info(f"✅ AgentCore MemoryClient initialised (memory_id={MEMORY_ID})")
-        except Exception as e:
-            logger.warning(f"⚠️ Could not initialise AgentCore MemoryClient: {e}")
-    return _memory_client
-
-
-def _load_conversation_history(session_id: str, actor_id: str, k: int = 5) -> str | None:
-    """Load the last k conversation turns from AgentCore Memory."""
-    client = _get_memory_client()
-    if not client or not MEMORY_ID:
-        return None
-    try:
-        turns = client.get_last_k_turns(
-            memory_id=MEMORY_ID,
-            actor_id=actor_id,
-            session_id=session_id,
-            k=k,
-        )
-        if not turns:
-            return None
-        lines = []
-        for turn in turns:
-            for msg in turn:
-                role = msg.get("role", "unknown")
-                text = msg.get("content", {}).get("text", "")
-                if text:
-                    lines.append(f"{role}: {text}")
-        if lines:
-            context = "\n".join(lines)
-            logger.info("📚 Loaded %d messages from memory", len(lines))
-            return context
-    except Exception:
-        logger.warning("⚠️ Failed to load conversation history", exc_info=True)
-    return None
-
-
-def _save_message(session_id: str, actor_id: str, role: str, text: str):
-    """Save a single message to AgentCore Memory."""
-    client = _get_memory_client()
-    if not client or not MEMORY_ID:
-        return
-    try:
-        client.create_event(
-            memory_id=MEMORY_ID,
-            actor_id=actor_id,
-            session_id=session_id,
-            messages=[(text, role)],
-        )
-        logger.debug(f"💾 Saved {role} message to memory (session={session_id})")
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to save message to memory: {e}")
 
 
 DEFAULT_SYSTEM_PROMPT = '''You are a friendly companion having a casual chat. Be warm, conversational, and natural. Keep responses concise and engaging.'''
@@ -106,20 +39,14 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
         if config is None:
             return
 
-        # Memory identifiers for this session
-        session_id = config.get("session_id") or f"session_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        actor_id = config.get("actor_id") or "user"
-
-        # Initialize agent from config (with optional conversation history)
-        agent = _create_agent(config, default_gateway_arns, session_id, actor_id)
+        # Initialize agent from config
+        agent = _create_agent(config, default_gateway_arns)
         logger.info("✅ Agent initialized successfully")
         logger.info(
             "   Config: model=%s, region=%s, voice=%s, audio=%dHz/%dHz",
             config['model_id'], config['region'], config['voice'],
             config['input_sample_rate'], config['output_sample_rate'],
         )
-        if MEMORY_ID:
-            logger.info("   Memory: id=%s, session=%s, actor=%s", MEMORY_ID, session_id, actor_id)
 
         # Send acknowledgment back to client
         await websocket.send_json({
@@ -146,8 +73,6 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
                 elif message.get("type") == "text_input":
                     text = message.get("text", "")
                     logger.info(f"Received text input: {text}")
-                    # Save user message to memory
-                    _save_message(session_id, actor_id, "user", text)
                     await agent.send(text)
                     continue
 
@@ -155,18 +80,8 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
                 else:
                     return message
 
-        # Wrap output_fn to capture assistant responses for memory
-        async def memory_aware_output(event_dict):
-            """Forward output and save assistant text to memory."""
-            # Capture assistant text responses
-            if event_dict.get("type") == "text" and event_dict.get("role") == "assistant":
-                text = event_dict.get("text", "")
-                if text:
-                    _save_message(session_id, actor_id, "assistant", text)
-            await output_fn(event_dict)
-
         # Start the agent with the input handler
-        await agent.run(inputs=[handle_websocket_input], outputs=[memory_aware_output])
+        await agent.run(inputs=[handle_websocket_input], outputs=[output_fn])
 
     except WebSocketDisconnect:
         logger.info("Client disconnected")
@@ -214,8 +129,6 @@ async def _wait_for_config(websocket: WebSocket) -> dict | None:
                 "gateway_arns": gateway_arns,
                 "system_prompt": system_prompt,
                 "api_key": message.get("api_key", None),
-                "session_id": message.get("session_id", None),
-                "actor_id": message.get("actor_id", None),
             }
         else:
             logger.warning(f"⚠️ Expected config event, got {message.get('type')}")
@@ -225,17 +138,11 @@ async def _wait_for_config(websocket: WebSocket) -> dict | None:
             })
 
 
-def _create_agent(config: dict, default_gateway_arns: list, session_id: str = "default", actor_id: str = "user") -> BidiAgent:
-    """Create and return a BidiAgent from the given config, optionally loading conversation history."""
+def _create_agent(config: dict, default_gateway_arns: list) -> BidiAgent:
+    """Create and return a BidiAgent from the given config."""
     # Use gateway ARNs from config if provided, otherwise use environment defaults
     effective_gateway_arns = config["gateway_arns"] if config["gateway_arns"] else default_gateway_arns
     effective_system_prompt = config["system_prompt"] if config["system_prompt"] else get_system_prompt()
-
-    # Load conversation history from AgentCore Memory and append to system prompt
-    if MEMORY_ID:
-        history = _load_conversation_history(session_id, actor_id)
-        if history:
-            effective_system_prompt += f"\n\nPrevious conversation history:\n{history}"
 
     if config["gateway_arns"]:
         logger.info("   Gateways: %d from config event", len(config['gateway_arns']))
