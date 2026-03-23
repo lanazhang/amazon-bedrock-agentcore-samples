@@ -51,7 +51,10 @@ class SigningHandler(BaseHTTPRequestHandler):
         )
         try:
             signed = create_presigned_url(
-                base_url, region=self.region, service="bedrock-agentcore", expires=self.expires
+                base_url,
+                region=self.region,
+                service="bedrock-agentcore",
+                expires=self.expires,
             )
             print(f"✅ Generated presigned URL (expires in {self.expires}s)")
             self._json_response({"ws_url": signed})

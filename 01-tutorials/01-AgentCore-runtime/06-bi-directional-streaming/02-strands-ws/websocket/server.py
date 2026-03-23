@@ -74,12 +74,14 @@ def split_large_event(event_dict, max_size=MAX_WS_MESSAGE_SIZE):
         f"Split {event_type} event ({event_size} bytes) into {len(chunks)} chunks"
     )
     return chunks
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Check if Gateway configuration is available
-MCP_GATEWAY_ARNS = os.getenv('MCP_GATEWAY_ARNS')
-MCP_GATEWAY_URLS = os.getenv('MCP_GATEWAY_URLS')
+MCP_GATEWAY_ARNS = os.getenv("MCP_GATEWAY_ARNS")
+MCP_GATEWAY_URLS = os.getenv("MCP_GATEWAY_URLS")
 
 if not MCP_GATEWAY_ARNS or not MCP_GATEWAY_URLS:
     logger.error("❌ MCP Gateway configuration is required!")
@@ -226,7 +228,9 @@ async def startup_event():
     global _credential_refresh_task
 
     logger.info("🚀 Starting server...")
-    logger.info(f"📍 Default Region: {os.getenv('AWS_DEFAULT_REGION', 'us-east-1')} (can be overridden per session via client config)")
+    logger.info(
+        f"📍 Default Region: {os.getenv('AWS_DEFAULT_REGION', 'us-east-1')} (can be overridden per session via client config)"
+    )
     logger.info(f"✅ {len(gateway_arns)} Gateway(s) configured:")
     for i, (arn, url) in enumerate(zip(gateway_arns, gateway_urls), 1):
         logger.info(f"   {i}. {url}")
@@ -276,32 +280,32 @@ async def ping():
     Returns agent status and timestamp per AgentCore protocol contract.
     """
     import time
-    return JSONResponse({
-        "status": "Healthy",
-        "time_of_last_update": int(time.time())
-    })
+
+    return JSONResponse({"status": "Healthy", "time_of_last_update": int(time.time())})
 
 
 @app.post("/invocations")
 async def invocations(request: dict):
     """
     Traditional request/response endpoint required by AgentCore Runtime protocol.
-    
+
     This agent is WebSocket-first and requires bidirectional streaming for audio.
     This endpoint provides information about how to connect properly.
     """
-    return JSONResponse({
-        "message": "This agent requires WebSocket connection for bidirectional audio streaming.",
-        "websocket_endpoint": "/ws",
-        "instructions": "Connect to /ws endpoint and send a 'config' event with voice settings.",
-        "config_event_format": {
-            "type": "config",
-            "voice": "tiffany",
-            "input_sample_rate": 16000,
-            "output_sample_rate": 16000
-        },
-        "available_voices": ["tiffany", "matthew", "ruth", "gregory", "joanna"]
-    })
+    return JSONResponse(
+        {
+            "message": "This agent requires WebSocket connection for bidirectional audio streaming.",
+            "websocket_endpoint": "/ws",
+            "instructions": "Connect to /ws endpoint and send a 'config' event with voice settings.",
+            "config_event_format": {
+                "type": "config",
+                "voice": "tiffany",
+                "input_sample_rate": 16000,
+                "output_sample_rate": 16000,
+            },
+            "available_voices": ["tiffany", "matthew", "ruth", "gregory", "joanna"],
+        }
+    )
 
 
 @app.websocket("/ws")

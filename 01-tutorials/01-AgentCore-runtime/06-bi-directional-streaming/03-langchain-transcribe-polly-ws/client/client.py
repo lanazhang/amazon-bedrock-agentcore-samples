@@ -5,6 +5,7 @@ LangChain Voice Agent Client
 Serves the HTML client and manages WebSocket connection details.
 Follows the same pattern as the Strands client.
 """
+
 import argparse
 import os
 import sys
@@ -115,7 +116,10 @@ class LangChainClientHandler(BaseHTTPRequestHandler):
     def regenerate_url(self):
         try:
             if not self.runtime_arn:
-                error_response = {"status": "error", "message": "Not using presigned URL mode"}
+                error_response = {
+                    "status": "error",
+                    "message": "Not using presigned URL mode",
+                }
                 response_json = json.dumps(error_response)
                 self.send_response(400)
                 self.send_header("Content-type", "application/json")
@@ -173,13 +177,33 @@ Examples:
 """,
     )
     parser.add_argument("--runtime-arn", help="Runtime ARN for AWS Bedrock connection")
-    parser.add_argument("--ws-url", help="WebSocket server URL for local connections (e.g., ws://localhost:8080/ws)")
-    parser.add_argument("--region", default=os.getenv("AWS_REGION", "us-east-1"), help="AWS region (default: us-east-1)")
-    parser.add_argument("--service", default="bedrock-agentcore", help="AWS service name")
-    parser.add_argument("--expires", type=int, default=3600, help="URL expiration time in seconds (default: 3600)")
-    parser.add_argument("--qualifier", default="DEFAULT", help="Runtime qualifier (default: DEFAULT)")
-    parser.add_argument("--port", type=int, default=8000, help="Web server port (default: 8000)")
-    parser.add_argument("--no-browser", action="store_true", help="Do not automatically open browser")
+    parser.add_argument(
+        "--ws-url",
+        help="WebSocket server URL for local connections (e.g., ws://localhost:8080/ws)",
+    )
+    parser.add_argument(
+        "--region",
+        default=os.getenv("AWS_REGION", "us-east-1"),
+        help="AWS region (default: us-east-1)",
+    )
+    parser.add_argument(
+        "--service", default="bedrock-agentcore", help="AWS service name"
+    )
+    parser.add_argument(
+        "--expires",
+        type=int,
+        default=3600,
+        help="URL expiration time in seconds (default: 3600)",
+    )
+    parser.add_argument(
+        "--qualifier", default="DEFAULT", help="Runtime qualifier (default: DEFAULT)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8000, help="Web server port (default: 8000)"
+    )
+    parser.add_argument(
+        "--no-browser", action="store_true", help="Do not automatically open browser"
+    )
 
     args = parser.parse_args()
 
@@ -201,7 +225,9 @@ Examples:
     print("=" * 70)
 
     websocket_url = None
-    session_id = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
+    session_id = "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(50)
+    )
     is_presigned = False
 
     try:
@@ -214,7 +240,9 @@ Examples:
             print(f"🔑 Runtime ARN: {args.runtime_arn}")
             print(f"🌍 Region: {args.region}")
             print(f"🆔 Session ID: {session_id}")
-            print(f"⏰ URL expires in: {args.expires} seconds ({args.expires / 60:.1f} minutes)")
+            print(
+                f"⏰ URL expires in: {args.expires} seconds ({args.expires / 60:.1f} minutes)"
+            )
             print()
             print("🔐 Generating pre-signed URL...")
             websocket_url = create_presigned_url(
@@ -273,6 +301,7 @@ Examples:
     except Exception as e:
         print(f"\n❌ Error: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc(file=sys.stderr)
         return 1
 

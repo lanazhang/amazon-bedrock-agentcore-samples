@@ -229,8 +229,6 @@ Examples:
         "--qualifier", default="DEFAULT", help="Runtime qualifier (default: DEFAULT)"
     )
 
-
-
     parser.add_argument(
         "--port", type=int, default=8000, help="Web server port (default: 8000)"
     )
@@ -261,7 +259,9 @@ Examples:
     print("=" * 70)
 
     websocket_url = None
-    session_id = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
+    session_id = "".join(
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(50)
+    )
     is_presigned = False
 
     try:

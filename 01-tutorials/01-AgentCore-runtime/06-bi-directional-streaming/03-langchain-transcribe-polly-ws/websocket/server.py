@@ -50,6 +50,7 @@ _credential_refresh_task = None
 # IMDS credential helpers (same pattern as strands server)
 # ---------------------------------------------------------------------------
 
+
 def get_imdsv2_token():
     """Get IMDSv2 token for secure metadata access."""
     try:
@@ -68,8 +69,11 @@ def get_imdsv2_token():
 def get_credentials_from_imds():
     """Retrieve IAM role credentials from EC2 IMDS (tries IMDSv2 first, falls back to IMDSv1)."""
     result = {
-        "success": False, "credentials": None,
-        "role_name": None, "method_used": None, "error": None,
+        "success": False,
+        "credentials": None,
+        "role_name": None,
+        "method_used": None,
+        "error": None,
     }
     try:
         token = get_imdsv2_token()
@@ -78,10 +82,13 @@ def get_credentials_from_imds():
 
         role_resp = requests.get(
             "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
-            headers=headers, timeout=2,
+            headers=headers,
+            timeout=2,
         )
         if role_resp.status_code != 200:
-            result["error"] = f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
+            result["error"] = (
+                f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
+            )
             return result
 
         role_name = role_resp.text.strip()
@@ -89,10 +96,13 @@ def get_credentials_from_imds():
 
         creds_resp = requests.get(
             f"http://169.254.169.254/latest/meta-data/iam/security-credentials/{role_name}",
-            headers=headers, timeout=2,
+            headers=headers,
+            timeout=2,
         )
         if creds_resp.status_code != 200:
-            result["error"] = f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
+            result["error"] = (
+                f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
+            )
             return result
 
         creds = creds_resp.json()
@@ -121,9 +131,13 @@ async def refresh_credentials_from_imds():
                 os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
                 logger.info(f"✅ Credentials refreshed ({imds_result['method_used']})")
                 try:
-                    expiration = datetime.fromisoformat(creds["Expiration"].replace("Z", "+00:00"))
+                    expiration = datetime.fromisoformat(
+                        creds["Expiration"].replace("Z", "+00:00")
+                    )
                     now = datetime.now(expiration.tzinfo)
-                    refresh_interval = min(max((expiration - now).total_seconds() - 300, 60), 3600)
+                    refresh_interval = min(
+                        max((expiration - now).total_seconds() - 300, 60), 3600
+                    )
                 except Exception:
                     refresh_interval = 3600
                 await asyncio.sleep(refresh_interval)
@@ -175,7 +189,9 @@ async def startup_event():
             os.environ["AWS_SECRET_ACCESS_KEY"] = creds["SecretAccessKey"]
             os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
             logger.info(f"✅ Credentials loaded ({imds_result['method_used']})")
-            _credential_refresh_task = asyncio.create_task(refresh_credentials_from_imds())
+            _credential_refresh_task = asyncio.create_task(
+                refresh_credentials_from_imds()
+            )
             logger.info("🔄 Credential refresh task started")
         else:
             logger.error(f"❌ Failed to fetch credentials: {imds_result['error']}")
@@ -202,19 +218,21 @@ async def ping():
 @app.post("/invocations")
 async def invocations(request: dict):
     """Traditional request/response endpoint required by AgentCore Runtime protocol."""
-    return JSONResponse({
-        "message": "This agent uses the LangChain sandwich architecture (STT > Agent > TTS) "
-                   "and requires a WebSocket connection for bidirectional audio streaming.",
-        "websocket_endpoint": "/ws",
-        "architecture": "sandwich (STT: Amazon Transcribe, Agent: LangChain + Nova 2 Lite, TTS: Amazon Polly)",
-        "config_event_format": {
-            "type": "config",
-            "voice": "Joanna",
-            "input_sample_rate": 16000,
-            "output_sample_rate": 16000,
-        },
-        "available_voices": ["Joanna", "Matthew", "Ruth", "Gregory", "Ivy"],
-    })
+    return JSONResponse(
+        {
+            "message": "This agent uses the LangChain sandwich architecture (STT > Agent > TTS) "
+            "and requires a WebSocket connection for bidirectional audio streaming.",
+            "websocket_endpoint": "/ws",
+            "architecture": "sandwich (STT: Amazon Transcribe, Agent: LangChain + Nova 2 Lite, TTS: Amazon Polly)",
+            "config_event_format": {
+                "type": "config",
+                "voice": "Joanna",
+                "input_sample_rate": 16000,
+                "output_sample_rate": 16000,
+            },
+            "available_voices": ["Joanna", "Matthew", "Ruth", "Gregory", "Ivy"],
+        }
+    )
 
 
 @app.websocket("/ws")

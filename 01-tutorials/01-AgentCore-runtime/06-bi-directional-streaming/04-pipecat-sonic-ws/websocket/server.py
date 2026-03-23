@@ -78,8 +78,11 @@ def get_imdsv2_token():
 def get_credentials_from_imds():
     """Retrieve IAM role credentials from EC2 IMDS."""
     result = {
-        "success": False, "credentials": None,
-        "role_name": None, "method_used": None, "error": None,
+        "success": False,
+        "credentials": None,
+        "role_name": None,
+        "method_used": None,
+        "error": None,
     }
     try:
         token = get_imdsv2_token()
@@ -88,10 +91,13 @@ def get_credentials_from_imds():
 
         role_resp = requests.get(
             "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
-            headers=headers, timeout=2,
+            headers=headers,
+            timeout=2,
         )
         if role_resp.status_code != 200:
-            result["error"] = f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
+            result["error"] = (
+                f"Failed to retrieve IAM role: HTTP {role_resp.status_code}"
+            )
             return result
 
         role_name = role_resp.text.strip()
@@ -99,10 +105,13 @@ def get_credentials_from_imds():
 
         creds_resp = requests.get(
             f"http://169.254.169.254/latest/meta-data/iam/security-credentials/{role_name}",
-            headers=headers, timeout=2,
+            headers=headers,
+            timeout=2,
         )
         if creds_resp.status_code != 200:
-            result["error"] = f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
+            result["error"] = (
+                f"Failed to retrieve credentials: HTTP {creds_resp.status_code}"
+            )
             return result
 
         creds = creds_resp.json()
@@ -130,7 +139,9 @@ async def refresh_credentials_periodically():
                 os.environ["AWS_SESSION_TOKEN"] = creds["token"]
                 expiration = creds["expiration"]
                 method_used = result["method_used"]
-                logger.info("Credentials refreshed via %s, expires: %s", method_used, expiration)
+                logger.info(
+                    "Credentials refreshed via %s, expires: %s", method_used, expiration
+                )
             else:
                 logger.warning(f"Credential refresh failed: {result['error']}")
         except Exception as e:
@@ -153,6 +164,7 @@ SYSTEM_INSTRUCTION = (
 # Tool callbacks
 # ---------------------------------------------------------------------------
 
+
 async def get_account_balance(params: FunctionCallParams):
     account_id = params.arguments.get("account_id", "unknown")
     await params.result_callback(
@@ -164,9 +176,21 @@ async def get_recent_transactions(params: FunctionCallParams):
     await params.result_callback(
         {
             "transactions": [
-                {"date": "2026-03-12", "description": "Coffee Shop", "amount": "-$4.50"},
-                {"date": "2026-03-11", "description": "Direct Deposit", "amount": "+$2,500.00"},
-                {"date": "2026-03-10", "description": "Grocery Store", "amount": "-$67.23"},
+                {
+                    "date": "2026-03-12",
+                    "description": "Coffee Shop",
+                    "amount": "-$4.50",
+                },
+                {
+                    "date": "2026-03-11",
+                    "description": "Direct Deposit",
+                    "amount": "+$2,500.00",
+                },
+                {
+                    "date": "2026-03-10",
+                    "description": "Grocery Store",
+                    "amount": "-$67.23",
+                },
             ]
         }
     )
@@ -174,7 +198,13 @@ async def get_recent_transactions(params: FunctionCallParams):
 
 async def get_mortgage_rates(params: FunctionCallParams):
     await params.result_callback(
-        {"rates": {"30_year_fixed": "6.75%", "15_year_fixed": "5.99%", "5_1_arm": "6.25%"}}
+        {
+            "rates": {
+                "30_year_fixed": "6.75%",
+                "15_year_fixed": "5.99%",
+                "5_1_arm": "6.25%",
+            }
+        }
     )
 
 
@@ -188,7 +218,10 @@ tools = ToolsSchema(
             name="get_account_balance",
             description="Get the balance for a customer bank account",
             properties={
-                "account_id": {"type": "string", "description": "The customer account ID"}
+                "account_id": {
+                    "type": "string",
+                    "description": "The customer account ID",
+                }
             },
             required=["account_id"],
         ),
@@ -196,8 +229,14 @@ tools = ToolsSchema(
             name="get_recent_transactions",
             description="Get recent transactions for a customer account",
             properties={
-                "account_id": {"type": "string", "description": "The customer account ID"},
-                "count": {"type": "integer", "description": "Number of transactions to return"},
+                "account_id": {
+                    "type": "string",
+                    "description": "The customer account ID",
+                },
+                "count": {
+                    "type": "integer",
+                    "description": "Number of transactions to return",
+                },
             },
             required=["account_id"],
         ),
@@ -229,7 +268,9 @@ async def lifespan(app_instance):
         os.environ["AWS_SECRET_ACCESS_KEY"] = creds["secret_key"]
         os.environ["AWS_SESSION_TOKEN"] = creds["token"]
         logger.info(f"Initial credentials loaded via {result['method_used']}")
-        _credential_refresh_task = asyncio.create_task(refresh_credentials_periodically())
+        _credential_refresh_task = asyncio.create_task(
+            refresh_credentials_periodically()
+        )
     else:
         logger.info("IMDS not available — using environment variable credentials")
     yield
@@ -264,11 +305,13 @@ async def start():
 
 @app.post("/invocations")
 async def invocations():
-    return JSONResponse({
-        "agent": "pipecat-nova-sonic",
-        "status": "running",
-        "model": "amazon.nova-2-sonic-v1:0",
-    })
+    return JSONResponse(
+        {
+            "agent": "pipecat-nova-sonic",
+            "status": "running",
+            "model": "amazon.nova-2-sonic-v1:0",
+        }
+    )
 
 
 @app.websocket("/ws")
@@ -300,9 +343,17 @@ async def websocket_endpoint(websocket: WebSocket):
             ),
         )
 
-        llm.register_function("get_account_balance", get_account_balance, cancel_on_interruption=False)
-        llm.register_function("get_recent_transactions", get_recent_transactions, cancel_on_interruption=False)
-        llm.register_function("get_mortgage_rates", get_mortgage_rates, cancel_on_interruption=False)
+        llm.register_function(
+            "get_account_balance", get_account_balance, cancel_on_interruption=False
+        )
+        llm.register_function(
+            "get_recent_transactions",
+            get_recent_transactions,
+            cancel_on_interruption=False,
+        )
+        llm.register_function(
+            "get_mortgage_rates", get_mortgage_rates, cancel_on_interruption=False
+        )
 
         context = LLMContext(tools=tools)
         user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
@@ -332,7 +383,10 @@ async def websocket_endpoint(websocket: WebSocket):
         async def on_client_connected(transport, client):
             logger.info("Pipecat client connected — starting conversation")
             context.add_message(
-                {"role": "user", "content": "Please introduce yourself as AnyBank's voice assistant."}
+                {
+                    "role": "user",
+                    "content": "Please introduce yourself as AnyBank's voice assistant.",
+                }
             )
             await task.queue_frames([LLMRunFrame()])
 
@@ -342,12 +396,16 @@ async def websocket_endpoint(websocket: WebSocket):
             await task.cancel()
 
         @user_aggregator.event_handler("on_user_turn_stopped")
-        async def on_user_turn_stopped(aggregator, strategy, message: UserTurnStoppedMessage):
+        async def on_user_turn_stopped(
+            aggregator, strategy, message: UserTurnStoppedMessage
+        ):
             timestamp = f"[{message.timestamp}] " if message.timestamp else ""
             logger.info(f"Transcript: {timestamp}user: {message.content}")
 
         @assistant_aggregator.event_handler("on_assistant_turn_stopped")
-        async def on_assistant_turn_stopped(aggregator, message: AssistantTurnStoppedMessage):
+        async def on_assistant_turn_stopped(
+            aggregator, message: AssistantTurnStoppedMessage
+        ):
             timestamp = f"[{message.timestamp}] " if message.timestamp else ""
             logger.info(f"Transcript: {timestamp}assistant: {message.content}")
 

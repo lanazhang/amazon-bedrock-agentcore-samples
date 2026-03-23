@@ -34,29 +34,39 @@ logger = logging.getLogger(__name__)
 # Voice Agent Event types (sandwich pipeline events)
 # ---------------------------------------------------------------------------
 
+
 class VoiceAgentEvent:
     """Base event flowing through the STT > Agent > TTS pipeline."""
+
     def __init__(self, event_type: str, **kwargs):
         self.type = event_type
         self.__dict__.update(kwargs)
 
+
 class STTChunkEvent(VoiceAgentEvent):
     """Partial transcript from STT."""
+
     def __init__(self, transcript: str):
         super().__init__("stt_chunk", transcript=transcript)
 
+
 class STTOutputEvent(VoiceAgentEvent):
     """Final transcript from STT."""
+
     def __init__(self, transcript: str):
         super().__init__("stt_output", transcript=transcript)
 
+
 class AgentChunkEvent(VoiceAgentEvent):
     """Streamed text chunk from the LangChain agent."""
+
     def __init__(self, text: str):
         super().__init__("agent_chunk", text=text)
 
+
 class TTSChunkEvent(VoiceAgentEvent):
     """Audio chunk from TTS."""
+
     def __init__(self, audio: bytes):
         super().__init__("tts_chunk", audio=audio)
 
@@ -82,6 +92,7 @@ def get_system_prompt() -> str:
 # ---------------------------------------------------------------------------
 # LangChain Agent setup
 # ---------------------------------------------------------------------------
+
 
 def build_agent(system_prompt: str | None = None, region: str = "us-east-1"):
     """Create a LangChain agent with memory, using Bedrock Nova 2 Lite with extended thinking."""
@@ -134,7 +145,10 @@ def build_agent(system_prompt: str | None = None, region: str = "us-east-1"):
 # Pipeline stages (sandwich architecture – reference implementations)
 # ---------------------------------------------------------------------------
 
-async def stt_stream(audio_stream: AsyncIterator[bytes]) -> AsyncIterator[VoiceAgentEvent]:
+
+async def stt_stream(
+    audio_stream: AsyncIterator[bytes],
+) -> AsyncIterator[VoiceAgentEvent]:
     """STT stage: Audio bytes → VoiceAgentEvents (stt_chunk / stt_output)."""
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")  # noqa: F841
 
@@ -177,7 +191,9 @@ async def agent_stream(
                     yield AgentChunkEvent(text=message.text)
 
 
-async def tts_stream(event_stream: AsyncIterator[VoiceAgentEvent]) -> AsyncIterator[VoiceAgentEvent]:
+async def tts_stream(
+    event_stream: AsyncIterator[VoiceAgentEvent],
+) -> AsyncIterator[VoiceAgentEvent]:
     """TTS stage: synthesizes agent text into audio via Amazon Polly."""
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
     voice_id = os.getenv("POLLY_VOICE_ID", "Joanna")
@@ -192,8 +208,10 @@ async def tts_stream(event_stream: AsyncIterator[VoiceAgentEvent]) -> AsyncItera
             if any(combined.rstrip().endswith(p) for p in (".", "!", "?", ":")):
                 try:
                     response = polly.synthesize_speech(
-                        Text=combined, OutputFormat="pcm",
-                        SampleRate="16000", VoiceId=voice_id,
+                        Text=combined,
+                        OutputFormat="pcm",
+                        SampleRate="16000",
+                        VoiceId=voice_id,
                     )
                     audio_bytes = response["AudioStream"].read()
                     if audio_bytes:
@@ -207,8 +225,10 @@ async def tts_stream(event_stream: AsyncIterator[VoiceAgentEvent]) -> AsyncItera
         if combined.strip():
             try:
                 response = polly.synthesize_speech(
-                    Text=combined, OutputFormat="pcm",
-                    SampleRate="16000", VoiceId=voice_id,
+                    Text=combined,
+                    OutputFormat="pcm",
+                    SampleRate="16000",
+                    VoiceId=voice_id,
                 )
                 audio_bytes = response["AudioStream"].read()
                 if audio_bytes:
@@ -221,7 +241,10 @@ async def tts_stream(event_stream: AsyncIterator[VoiceAgentEvent]) -> AsyncItera
 # Amazon Transcribe Streaming helper
 # ---------------------------------------------------------------------------
 
-async def transcribe_audio(pcm_bytes: bytes, region: str, sample_rate: int) -> str | None:
+
+async def transcribe_audio(
+    pcm_bytes: bytes, region: str, sample_rate: int
+) -> str | None:
     """Transcribe PCM audio bytes using Amazon Transcribe Streaming API."""
     if len(pcm_bytes) < 1600:
         return None
@@ -253,7 +276,7 @@ async def transcribe_audio(pcm_bytes: bytes, region: str, sample_rate: int) -> s
 
         async def write_chunks():
             for i in range(0, len(pcm_bytes), CHUNK_SIZE):
-                chunk = pcm_bytes[i:i + CHUNK_SIZE]
+                chunk = pcm_bytes[i : i + CHUNK_SIZE]
                 await stream.input_stream.send_audio_event(audio_chunk=chunk)
             await stream.input_stream.end_stream()
 
@@ -261,7 +284,7 @@ async def transcribe_audio(pcm_bytes: bytes, region: str, sample_rate: int) -> s
         await asyncio.gather(write_chunks(), handler.handle_events())
 
         transcript = " ".join(final_transcripts).strip()
-        logger.info(f"   📝 Transcribe streaming result: \"{transcript}\"")
+        logger.info(f'   📝 Transcribe streaming result: "{transcript}"')
         return transcript if transcript else None
 
     except Exception as e:
@@ -273,6 +296,7 @@ async def transcribe_audio(pcm_bytes: bytes, region: str, sample_rate: int) -> s
 # ---------------------------------------------------------------------------
 # WebSocket session handler
 # ---------------------------------------------------------------------------
+
 
 async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: list):
     """Handle a single WebSocket voice session.
@@ -302,7 +326,9 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
         output_sr = config.get("output_sample_rate", 16000)
 
         logger.info(f"📝 System prompt length: {len(system_prompt)} chars")
-        logger.info(f"🤖 Building LangChain agent (Bedrock Nova 2 Lite, region={region})...")
+        logger.info(
+            f"🤖 Building LangChain agent (Bedrock Nova 2 Lite, region={region})..."
+        )
 
         agent = build_agent(system_prompt, region=region)
         thread_id = str(uuid4())
@@ -310,21 +336,25 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
         logger.info("✅ LangChain voice agent initialized")
         logger.info(f"   🎤 Voice: {voice_id}")
         logger.info(f"   🌍 Region: {region}")
-        logger.info(f"   📊 Audio: {config['input_sample_rate']}Hz input, {output_sr}Hz output")
+        logger.info(
+            f"   📊 Audio: {config['input_sample_rate']}Hz input, {output_sr}Hz output"
+        )
         logger.info(f"   🧵 Thread ID: {thread_id}")
 
-        await websocket.send_json({
-            "type": "system",
-            "message": f"LangChain sandwich agent ready: voice={voice_id}, region={region}"
-        })
+        await websocket.send_json(
+            {
+                "type": "system",
+                "message": f"LangChain sandwich agent ready: voice={voice_id}, region={region}",
+            }
+        )
         logger.info("📤 Sent system ready message to client")
 
         # --- helpers -------------------------------------------------------
 
         async def run_agent_and_respond(text: str):
             """Send text through the agent, stream chunks back, then synthesize TTS."""
-            logger.info(f"{'='*60}")
-            logger.info(f"🧠 Agent processing input: \"{text[:120]}\"")
+            logger.info(f"{'=' * 60}")
+            logger.info(f'🧠 Agent processing input: "{text[:120]}"')
 
             raw_response: list[str] = []
             clean_full = ""
@@ -341,25 +371,33 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
                         for block in msg.content:
                             if isinstance(block, dict):
                                 if block.get("type") == "reasoning_content":
-                                    logger.debug("   🧠 Skipping reasoning_content block")
+                                    logger.debug(
+                                        "   🧠 Skipping reasoning_content block"
+                                    )
                                     continue
                                 if block.get("type") == "text" and block.get("text"):
                                     raw_response.append(block["text"])
                     elif hasattr(msg, "text") and msg.text:
                         raw_response.append(msg.text)
-                    elif hasattr(msg, "content") and isinstance(msg.content, str) and msg.content:
+                    elif (
+                        hasattr(msg, "content")
+                        and isinstance(msg.content, str)
+                        and msg.content
+                    ):
                         raw_response.append(msg.content)
 
                 raw_full = "".join(raw_response)
                 clean_full = raw_full.strip()
                 logger.info(f"   ✅ Agent finished: {len(raw_response)} raw chunks")
-                logger.info(f"   📝 Response: \"{clean_full[:150]}\"")
+                logger.info(f'   📝 Response: "{clean_full[:150]}"')
 
                 if clean_full:
-                    await websocket.send_json({
-                        "type": "agent_chunk",
-                        "text": clean_full,
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "agent_chunk",
+                            "text": clean_full,
+                        }
+                    )
             except Exception as e:
                 logger.error(f"   ❌ Agent error: {type(e).__name__}: {e}")
                 traceback.print_exc()
@@ -372,8 +410,12 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
             # 16KB raw PCM → ~21KB base64 + JSON overhead ≈ ~22KB per frame.
             TTS_CHUNK_SIZE = 16000  # bytes of raw PCM per frame
             if clean_full.strip():
-                logger.info(f"   🔊 Synthesizing TTS with Polly (voice={voice_id}, rate={output_sr}Hz)")
-                logger.info(f"   📝 TTS text ({len(clean_full)} chars): \"{clean_full[:120]}...\"")
+                logger.info(
+                    f"   🔊 Synthesizing TTS with Polly (voice={voice_id}, rate={output_sr}Hz)"
+                )
+                logger.info(
+                    f'   📝 TTS text ({len(clean_full)} chars): "{clean_full[:120]}..."'
+                )
                 try:
                     polly = boto3.client("polly", region_name=region)
                     resp = polly.synthesize_speech(
@@ -383,16 +425,22 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
                         VoiceId=voice_id,
                     )
                     audio_bytes = resp["AudioStream"].read()
-                    total_chunks = (len(audio_bytes) + TTS_CHUNK_SIZE - 1) // TTS_CHUNK_SIZE
-                    logger.info(f"   ✅ Polly returned {len(audio_bytes)} bytes, sending in {total_chunks} chunks")
+                    total_chunks = (
+                        len(audio_bytes) + TTS_CHUNK_SIZE - 1
+                    ) // TTS_CHUNK_SIZE
+                    logger.info(
+                        f"   ✅ Polly returned {len(audio_bytes)} bytes, sending in {total_chunks} chunks"
+                    )
                     for i in range(0, len(audio_bytes), TTS_CHUNK_SIZE):
-                        chunk = audio_bytes[i:i + TTS_CHUNK_SIZE]
+                        chunk = audio_bytes[i : i + TTS_CHUNK_SIZE]
                         chunk_b64 = base64.b64encode(chunk).decode("utf-8")
-                        await websocket.send_json({
-                            "type": "tts_audio",
-                            "audio": chunk_b64,
-                            "sample_rate": output_sr,
-                        })
+                        await websocket.send_json(
+                            {
+                                "type": "tts_audio",
+                                "audio": chunk_b64,
+                                "sample_rate": output_sr,
+                            }
+                        )
                     logger.info(f"   📤 Sent {total_chunks} tts_audio chunks to client")
                 except Exception as e:
                     logger.error(f"   ❌ Polly TTS error: {type(e).__name__}: {e}")
@@ -416,7 +464,9 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
         while True:
             try:
                 raw = await websocket.receive()
-                logger.info(f"📥 Raw WS frame: type={raw.get('type')}, text_len={len(raw.get('text',''))}, bytes_len={len(raw.get('bytes', b''))}")
+                logger.info(
+                    f"📥 Raw WS frame: type={raw.get('type')}, text_len={len(raw.get('text', ''))}, bytes_len={len(raw.get('bytes', b''))}"
+                )
                 if raw.get("text"):
                     message = json.loads(raw["text"])
                 elif raw.get("bytes"):
@@ -431,25 +481,35 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
             msg_type = message.get("type")
 
             if msg_type != "audio_input":
-                logger.info(f"📥 Message #{msg_count}: type={msg_type}, keys={list(message.keys())}")
+                logger.info(
+                    f"📥 Message #{msg_count}: type={msg_type}, keys={list(message.keys())}"
+                )
 
             # AgentCore's WebSocket proxy echoes back server-sent messages.
             # Skip any message types that this server sends to avoid processing our own output.
-            SERVER_SENT_TYPES = {"tts_audio", "agent_chunk", "transcript", "system", "error"}
+            SERVER_SENT_TYPES = {
+                "tts_audio",
+                "agent_chunk",
+                "transcript",
+                "system",
+                "error",
+            }
             if msg_type in SERVER_SENT_TYPES:
                 logger.debug(f"   🔁 Ignoring echoed server message: {msg_type}")
                 continue
 
             if msg_type == "config":
                 logger.info("   ⚠️ Duplicate config event, ignoring")
-                await websocket.send_json({
-                    "type": "system",
-                    "message": "Configuration can only be set once per session. Reconnect to change."
-                })
+                await websocket.send_json(
+                    {
+                        "type": "system",
+                        "message": "Configuration can only be set once per session. Reconnect to change.",
+                    }
+                )
 
             elif msg_type == "text_input":
                 text = message.get("text", "").strip()
-                logger.info(f"   💬 Text input received: \"{text}\"")
+                logger.info(f'   💬 Text input received: "{text}"')
                 if text:
                     await run_agent_and_respond(text)
                 else:
@@ -466,7 +526,9 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
                 # Energy-based silence detection for 16-bit signed PCM
                 num_samples = len(chunk) // 2
                 if num_samples > 0:
-                    samples = struct.unpack(f"<{num_samples}h", chunk[:num_samples * 2])
+                    samples = struct.unpack(
+                        f"<{num_samples}h", chunk[: num_samples * 2]
+                    )
                     rms_energy = (sum(s * s for s in samples) / num_samples) ** 0.5
                     if rms_energy < RMS_SILENCE_THRESHOLD:
                         silence_chunks += 1
@@ -474,26 +536,36 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
                         silence_chunks = 0
 
                 if audio_chunk_count % 50 == 0:
-                    logger.info(f"   🎤 Audio: {audio_chunk_count} chunks received, "
-                                f"buffer={len(audio_buffer)} bytes, "
-                                f"silence={silence_chunks}/{silence_limit}, "
-                                f"rms={rms_energy:.0f}")
+                    logger.info(
+                        f"   🎤 Audio: {audio_chunk_count} chunks received, "
+                        f"buffer={len(audio_buffer)} bytes, "
+                        f"silence={silence_chunks}/{silence_limit}, "
+                        f"rms={rms_energy:.0f}"
+                    )
 
                 if silence_chunks >= silence_limit and len(audio_buffer) > 3200:
-                    logger.info(f"   🔇 Silence detected after {len(audio_buffer)} bytes of audio")
-                    transcript = await transcribe_audio(bytes(audio_buffer), region, config["input_sample_rate"])
+                    logger.info(
+                        f"   🔇 Silence detected after {len(audio_buffer)} bytes of audio"
+                    )
+                    transcript = await transcribe_audio(
+                        bytes(audio_buffer), region, config["input_sample_rate"]
+                    )
                     audio_buffer.clear()
                     silence_chunks = 0
 
                     if transcript:
-                        logger.info(f"   🗣️ Transcript: \"{transcript}\"")
-                        await websocket.send_json({"type": "transcript", "text": transcript})
+                        logger.info(f'   🗣️ Transcript: "{transcript}"')
+                        await websocket.send_json(
+                            {"type": "transcript", "text": transcript}
+                        )
                         await run_agent_and_respond(transcript)
                     else:
                         logger.info("   🔇 No speech detected in audio, skipping")
 
             else:
-                logger.warning(f"   ❓ Unknown message type: {msg_type}, data: {json.dumps(message)[:200]}")
+                logger.warning(
+                    f"   ❓ Unknown message type: {msg_type}, data: {json.dumps(message)[:200]}"
+                )
 
     except WebSocketDisconnect:
         logger.info("🔌 Client disconnected")
@@ -508,7 +580,9 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
             except Exception:
                 pass
     finally:
-        logger.info(f"🔌 Connection closed (processed {msg_count} messages, {audio_chunk_count} audio chunks)")
+        logger.info(
+            f"🔌 Connection closed (processed {msg_count} messages, {audio_chunk_count} audio chunks)"
+        )
 
 
 async def _wait_for_config(websocket: WebSocket) -> dict | None:
@@ -523,8 +597,10 @@ async def _wait_for_config(websocket: WebSocket) -> dict | None:
             system_prompt = message.get("system_prompt", None)
             gateway_arns = message.get("gateway_arns", None)
 
-            logger.info(f"📥 Received config: voice={voice}, region={region}, "
-                         f"audio={input_sr}Hz/{output_sr}Hz")
+            logger.info(
+                f"📥 Received config: voice={voice}, region={region}, "
+                f"audio={input_sr}Hz/{output_sr}Hz"
+            )
             return {
                 "voice": voice,
                 "input_sample_rate": input_sr,
@@ -535,4 +611,6 @@ async def _wait_for_config(websocket: WebSocket) -> dict | None:
             }
         else:
             logger.warning(f"⚠️ Expected config event, got {message.get('type')}")
-            await websocket.send_json({"type": "system", "message": "Please send config event first"})
+            await websocket.send_json(
+                {"type": "system", "message": "Please send config event first"}
+            )

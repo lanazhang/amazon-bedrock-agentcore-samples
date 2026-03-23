@@ -10,7 +10,7 @@ from strands.experimental.bidi.models.nova_sonic import BidiNovaSonicModel
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_SYSTEM_PROMPT = '''You are a friendly companion having a casual chat. Be warm, conversational, and natural. Keep responses concise and engaging.'''
+DEFAULT_SYSTEM_PROMPT = """You are a friendly companion having a casual chat. Be warm, conversational, and natural. Keep responses concise and engaging."""
 
 
 def get_system_prompt() -> str:
@@ -18,7 +18,9 @@ def get_system_prompt() -> str:
     return DEFAULT_SYSTEM_PROMPT
 
 
-async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: list, send_output=None):
+async def handle_websocket_session(
+    websocket: WebSocket, default_gateway_arns: list, send_output=None
+):
     """
     Handle a WebSocket session: wait for config event, initialize agent, and run.
 
@@ -44,15 +46,20 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
         logger.info("✅ Agent initialized successfully")
         logger.info(
             "   Config: model=%s, region=%s, voice=%s, audio=%dHz/%dHz",
-            config['model_id'], config['region'], config['voice'],
-            config['input_sample_rate'], config['output_sample_rate'],
+            config["model_id"],
+            config["region"],
+            config["voice"],
+            config["input_sample_rate"],
+            config["output_sample_rate"],
         )
 
         # Send acknowledgment back to client
-        await websocket.send_json({
-            "type": "system",
-            "message": f"Configuration applied: {config['model_id']} with voice={config['voice']}, region={config['region']}"
-        })
+        await websocket.send_json(
+            {
+                "type": "system",
+                "message": f"Configuration applied: {config['model_id']} with voice={config['voice']}, region={config['region']}",
+            }
+        )
 
         # Define input handler
         async def handle_websocket_input():
@@ -62,11 +69,15 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
 
                 # Handle subsequent config events (not allowed after initialization)
                 if message.get("type") == "config":
-                    logger.info("⚠️ Config event received after initialization - ignoring")
-                    await websocket.send_json({
-                        "type": "system",
-                        "message": "Configuration can only be set once per session. Please reconnect to change settings."
-                    })
+                    logger.info(
+                        "⚠️ Config event received after initialization - ignoring"
+                    )
+                    await websocket.send_json(
+                        {
+                            "type": "system",
+                            "message": "Configuration can only be set once per session. Please reconnect to change settings.",
+                        }
+                    )
                     continue
 
                 # Check if it's a text message from the client
@@ -132,27 +143,35 @@ async def _wait_for_config(websocket: WebSocket) -> dict | None:
             }
         else:
             logger.warning(f"⚠️ Expected config event, got {message.get('type')}")
-            await websocket.send_json({
-                "type": "system",
-                "message": "Please send config event first"
-            })
+            await websocket.send_json(
+                {"type": "system", "message": "Please send config event first"}
+            )
 
 
 def _create_agent(config: dict, default_gateway_arns: list) -> BidiAgent:
     """Create and return a BidiAgent from the given config."""
     # Use gateway ARNs from config if provided, otherwise use environment defaults
-    effective_gateway_arns = config["gateway_arns"] if config["gateway_arns"] else default_gateway_arns
-    effective_system_prompt = config["system_prompt"] if config["system_prompt"] else get_system_prompt()
+    effective_gateway_arns = (
+        config["gateway_arns"] if config["gateway_arns"] else default_gateway_arns
+    )
+    effective_system_prompt = (
+        config["system_prompt"] if config["system_prompt"] else get_system_prompt()
+    )
 
     if config["gateway_arns"]:
-        logger.info("   Gateways: %d from config event", len(config['gateway_arns']))
+        logger.info("   Gateways: %d from config event", len(config["gateway_arns"]))
     else:
         logger.info("   Gateways: %d from environment", len(default_gateway_arns))
 
     model_id = config["model_id"]
     voice = config["voice"]
     region = config["region"]
-    logger.info("🎤 Initializing agent with model: %s, voice: %s, region: %s", model_id, voice, region)
+    logger.info(
+        "🎤 Initializing agent with model: %s, voice: %s, region: %s",
+        model_id,
+        voice,
+        region,
+    )
     logger.info("📝 System prompt: %s...", effective_system_prompt[:100])
 
     model = _create_model(config, effective_gateway_arns)
@@ -187,7 +206,9 @@ def _create_model(config: dict, effective_gateway_arns: list):
     elif model_id.startswith("gpt-"):
         logger.info("Using OpenAI RealTime Model")
         try:
-            from strands.experimental.bidi.models.openai_realtime import BidiOpenAIRealtimeModel
+            from strands.experimental.bidi.models.openai_realtime import (
+                BidiOpenAIRealtimeModel,
+            )
         except ImportError:
             raise RuntimeError(
                 "OpenAI Realtime support not installed. "
@@ -196,7 +217,9 @@ def _create_model(config: dict, effective_gateway_arns: list):
 
         api_key = config.get("api_key") or os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise RuntimeError("OpenAI API key is required. Provide it via config or OPENAI_API_KEY env var.")
+            raise RuntimeError(
+                "OpenAI API key is required. Provide it via config or OPENAI_API_KEY env var."
+            )
 
         return BidiOpenAIRealtimeModel(
             model_id=model_id,
@@ -207,7 +230,7 @@ def _create_model(config: dict, effective_gateway_arns: list):
             },
             client_config={"api_key": api_key},
             mcp_gateway_arn=effective_gateway_arns,
-       )
+        )
 
     # Gemini Live
     elif model_id.startswith("gemini"):
@@ -222,7 +245,9 @@ def _create_model(config: dict, effective_gateway_arns: list):
 
         api_key = config.get("api_key") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            raise RuntimeError("Google API key is required. Provide it via config or GOOGLE_API_KEY env var.")
+            raise RuntimeError(
+                "Google API key is required. Provide it via config or GOOGLE_API_KEY env var."
+            )
 
         # Set env var so the Gemini client picks it up
         os.environ["GOOGLE_API_KEY"] = api_key
