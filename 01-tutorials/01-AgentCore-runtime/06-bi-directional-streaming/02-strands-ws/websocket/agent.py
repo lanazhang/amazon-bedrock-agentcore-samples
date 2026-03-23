@@ -31,7 +31,7 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
     output_fn = send_output or websocket.send_json
 
     logger.info(f"Connection from {websocket.client}")
-    logger.info(f"⏳ Waiting for config event from client...")
+    logger.info("⏳ Waiting for config event from client...")
 
     try:
         # Wait for initial config event
@@ -62,7 +62,7 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
 
                 # Handle subsequent config events (not allowed after initialization)
                 if message.get("type") == "config":
-                    logger.info(f"⚠️ Config event received after initialization - ignoring")
+                    logger.info("⚠️ Config event received after initialization - ignoring")
                     await websocket.send_json({
                         "type": "system",
                         "message": "Configuration can only be set once per session. Please reconnect to change settings."
@@ -114,7 +114,7 @@ async def _wait_for_config(websocket: WebSocket) -> dict | None:
             gateway_arns = message.get("gateway_arns", None)
             system_prompt = message.get("system_prompt", None)
 
-            logger.info(f"📥 Received config event:")
+            logger.info("📥 Received config event:")
             logger.info(f"   Voice: {voice}")
             logger.info(f"   Model: {model_id}")
             logger.info(f"   Region: {region}")

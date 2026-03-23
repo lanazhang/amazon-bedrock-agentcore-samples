@@ -528,7 +528,7 @@ class AgentCoreDeployer:
             if not agent_arn:
                 raise RuntimeError("Failed to get agent ARN from deployment result")
             
-            self._success(f"Agent deployed successfully!")
+            self._success("Agent deployed successfully!")
             self._info(f"   Agent ARN: {agent_arn}")
             self._info(f"   Agent ID: {agent_id}")
             
@@ -613,7 +613,7 @@ class AgentCoreDeployer:
         print(f'   agentcore invoke "Hello!"')
         
         print(f"\n{Colors.YELLOW}3. View logs:{Colors.NC}")
-        print(f"   Check CloudWatch Logs in AWS Console")
+        print("   Check CloudWatch Logs in AWS Console")
         
         print(f"\n{Colors.YELLOW}4. When done, clean up:{Colors.NC}")
         print(f"   python utils/cleanup.py {self.websocket_folder}")

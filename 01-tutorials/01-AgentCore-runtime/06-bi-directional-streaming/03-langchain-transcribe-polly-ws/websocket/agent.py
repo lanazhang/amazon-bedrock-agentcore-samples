@@ -136,7 +136,7 @@ def build_agent(system_prompt: str | None = None, region: str = "us-east-1"):
 
 async def stt_stream(audio_stream: AsyncIterator[bytes]) -> AsyncIterator[VoiceAgentEvent]:
     """STT stage: Audio bytes → VoiceAgentEvents (stt_chunk / stt_output)."""
-    region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+    region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")  # noqa: F841
 
     audio_buffer = bytearray()
     SILENCE_THRESHOLD = 0.5
@@ -398,8 +398,8 @@ async def handle_websocket_session(websocket: WebSocket, default_gateway_arns: l
                     logger.error(f"   ❌ Polly TTS error: {type(e).__name__}: {e}")
                     traceback.print_exc()
             else:
-                logger.warning(f"   ⚠️ Agent returned empty response, skipping TTS")
-            logger.info(f"{'='*60}")
+                logger.warning("   ⚠️ Agent returned empty response, skipping TTS")
+            logger.info("=" * 60)
 
         # --- main message loop ---------------------------------------------
 

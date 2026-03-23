@@ -19,7 +19,7 @@ import os
 import sys
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional  # noqa: F401
 
 
 class Colors:
@@ -311,7 +311,7 @@ class AgentCoreCleanup:
         
         gateway = self.gateway_config.get('gateway', {})
         gateway_id = gateway.get('gateway_id')
-        gateway_arn = gateway.get('gateway_arn')
+        gateway_arn = gateway.get('gateway_arn')  # noqa: F841
         region = self.gateway_config.get('aws', {}).get('region', 'us-east-1')
         
         if not gateway_id:
@@ -324,7 +324,7 @@ class AgentCoreCleanup:
             from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
             
             # Initialize Gateway client
-            client = GatewayClient(region_name=region)
+            client = GatewayClient(region_name=region)  # noqa: F841
             
             # Delete gateway (this should handle targets automatically)
             try:
@@ -403,7 +403,7 @@ class AgentCoreCleanup:
             import boto3
             lambda_client = boto3.client('lambda', region_name=region)
             
-            account_id = self.gateway_config.get('aws', {}).get('account_id', '')
+            account_id = self.gateway_config.get('aws', {}).get('account_id', '')  # noqa: F841
             lambda_function_name = 'AgentCoreLambdaTestFunction'
             
             self._info("Deleting test Lambda function...")
@@ -579,7 +579,7 @@ class AgentCoreCleanup:
                 print(f"   - MCP Gateway: {gateway['gateway_arn']}")
         if self.config and 'memory' in self.config:
             print(f"   - AgentCore Memory: {self.config['memory'].get('memory_id', 'N/A')}")
-        print(f"   - Configuration files")
+        print("   - Configuration files")
         print()
 
     def cleanup(self):

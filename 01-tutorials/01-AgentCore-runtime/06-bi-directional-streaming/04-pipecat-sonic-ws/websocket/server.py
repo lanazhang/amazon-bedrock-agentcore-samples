@@ -15,11 +15,8 @@ Based on:
 """
 
 import asyncio
-import base64
-import json
 import logging
 import os
-import time
 
 import requests
 import uvicorn
@@ -42,7 +39,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
     UserTurnStoppedMessage,
 )
-from pipecat.runner.types import RunnerArguments
+from pipecat.runner.types import RunnerArguments  # noqa: F401
 from pipecat.services.aws.nova_sonic.llm import AWSNovaSonicLLMService
 from pipecat.services.llm_service import FunctionCallParams
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
@@ -218,7 +215,7 @@ tools = ToolsSchema(
 # FastAPI app
 # ---------------------------------------------------------------------------
 
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager  # noqa: E402
 
 
 @asynccontextmanager
