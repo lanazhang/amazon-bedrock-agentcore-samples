@@ -610,7 +610,7 @@ class AgentCoreDeployer:
         print(f"   ./utils/start_client.sh {self.websocket_folder}")
         
         print(f"\n{Colors.YELLOW}2. Or test with agentcore CLI:{Colors.NC}")
-        print(f'   agentcore invoke "Hello!"')
+        print('   agentcore invoke "Hello!"')
         
         print(f"\n{Colors.YELLOW}3. View logs:{Colors.NC}")
         print("   Check CloudWatch Logs in AWS Console")
